@@ -1,4 +1,4 @@
-Shader "Chapter 9/ForwardRendering"
+Shader "Chapter 9/AttenuationAndShadowUseBuildInFunctions"
 {
     Properties
     {
@@ -22,6 +22,7 @@ Shader "Chapter 9/ForwardRendering"
             #pragma fragment frag
 
             #include "Lighting.cginc"
+            #include "AutoLight.cginc"
 
             fixed4 _Diffuse;
             fixed4 _Specular;
@@ -38,6 +39,7 @@ Shader "Chapter 9/ForwardRendering"
                 float4 pos : SV_POSITION;
                 float3 worldNormal: TEXCOOED0;
                 float3 worldPos: TEXCOORD1;
+                SHADOW_COORDS(2)
             };
 
             sampler2D _MainTex;
@@ -49,6 +51,7 @@ Shader "Chapter 9/ForwardRendering"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                TRANSFER_SHADOW(o);
                 
                 return o;
             }
@@ -64,8 +67,11 @@ Shader "Chapter 9/ForwardRendering"
                 fixed3 halfDir = normalize(viewDir + worldLightDir);
                 fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(saturate(dot(halfDir, i.worldNormal)), _Gloss);
 
+                // fixed shadow = SHADOW_ATTENUATION(i);
+                UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
+
                 fixed attenuation = 1.0;
-                return fixed4(ambient + (diffuse + specular) * attenuation, 1.0);
+                return fixed4(ambient + (diffuse + specular) * atten, 1.0);
             }
             ENDCG
         }
@@ -79,7 +85,7 @@ Shader "Chapter 9/ForwardRendering"
             Blend One One
             CGPROGRAM
 
-            #pragma multi_compile_fwdadd
+            #pragma multi_compile_fwdadd_fullshadows
 
             #pragma vertex vert
             #pragma fragment frag
@@ -102,6 +108,7 @@ Shader "Chapter 9/ForwardRendering"
                 float4 pos : SV_POSITION;
                 float3 worldNormal: TEXCOOED0;
                 float3 worldPos: TEXCOORD1;
+                SHADOW_COORDS(2)
             };
 
             sampler2D _MainTex;
@@ -113,6 +120,7 @@ Shader "Chapter 9/ForwardRendering"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                TRANSFER_SHADOW(o);
                 
                 return o;
             }
@@ -133,14 +141,15 @@ Shader "Chapter 9/ForwardRendering"
                 fixed3 halfDir = normalize(viewDir + worldLightDir);
                 fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(saturate(dot(halfDir, i.worldNormal)), _Gloss);
 
-                #ifdef USING_DIRECTIONAL_LIGHT
-                    fixed atten = 1.0;
-                #else
-                    float3 lightCoord = mul(unity_WorldToLight, float4(i.worldPos, 1)).xyz;
-                    fixed atten = tex2D(_LightTexture0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
-                    // float distance = length(_WorldSpaceLightPos0.xyz - i.worldPos.xyz);
-                    // fixed atten = 1.0 / distance;
-                #endif
+                // #ifdef USING_DIRECTIONAL_LIGHT
+                //     fixed atten = 1.0;
+                // #else
+                //     float3 lightCoord = mul(unity_WorldToLight, float4(i.worldPos, 1)).xyz;
+                //     fixed atten = tex2D(_LightTexture0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
+                //     // float distance = length(_WorldSpaceLightPos0.xyz - i.worldPos.xyz);
+                //     // fixed atten = 1.0 / distance;
+                // #endif
+                UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos);
 
                 return fixed4((diffuse + specular) * atten, 1.0);
             }

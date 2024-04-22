@@ -1,4 +1,4 @@
-Shader "Chapter 9/ForwardRendering"
+Shader "Chapter 9/Shadow"
 {
     Properties
     {
@@ -22,6 +22,7 @@ Shader "Chapter 9/ForwardRendering"
             #pragma fragment frag
 
             #include "Lighting.cginc"
+            #include "AutoLight.cginc"
 
             fixed4 _Diffuse;
             fixed4 _Specular;
@@ -38,6 +39,7 @@ Shader "Chapter 9/ForwardRendering"
                 float4 pos : SV_POSITION;
                 float3 worldNormal: TEXCOOED0;
                 float3 worldPos: TEXCOORD1;
+                SHADOW_COORDS(2)
             };
 
             sampler2D _MainTex;
@@ -49,6 +51,7 @@ Shader "Chapter 9/ForwardRendering"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
+                TRANSFER_SHADOW(o);
                 
                 return o;
             }
@@ -64,8 +67,10 @@ Shader "Chapter 9/ForwardRendering"
                 fixed3 halfDir = normalize(viewDir + worldLightDir);
                 fixed3 specular = _LightColor0.rgb * _Specular.rgb * pow(saturate(dot(halfDir, i.worldNormal)), _Gloss);
 
+                fixed shadow = SHADOW_ATTENUATION(i);
+
                 fixed attenuation = 1.0;
-                return fixed4(ambient + (diffuse + specular) * attenuation, 1.0);
+                return fixed4(ambient + (diffuse + specular) * attenuation * shadow, 1.0);
             }
             ENDCG
         }
